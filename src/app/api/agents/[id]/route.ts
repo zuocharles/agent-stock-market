@@ -18,7 +18,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
       portfolio,
       trades
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ success: false, error: 'Failed to fetch agent' }, { status: 500 });
   }
 }

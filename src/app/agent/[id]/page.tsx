@@ -45,7 +45,7 @@ export default function AgentPage() {
   const [tradeType, setTradeType] = useState<'buy' | 'sell'>('buy');
   const [tradeRationale, setTradeRationale] = useState('');
   const [tradeLoading, setTradeLoading] = useState(false);
-  const [tradeResult, setTradeResult] = useState<any>(null);
+  const [tradeResult, setTradeResult] = useState<{ success: boolean; message?: string; error?: string; trade?: { id: string; symbol: string; type: 'buy' | 'sell'; shares: number; price: number; total: number } } | null>(null);
 
   const fetchData = () => {
     fetch(`/api/agents/${agentId}`)
@@ -91,7 +91,7 @@ export default function AgentPage() {
         setTradeShares('');
         setTradeRationale('');
       }
-    } catch (error) {
+    } catch {
       setTradeResult({ success: false, message: 'Trade failed' });
     } finally {
       setTradeLoading(false);

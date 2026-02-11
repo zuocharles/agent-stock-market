@@ -5,7 +5,7 @@ export async function GET() {
   try {
     const agents = AgentStockDB.getAllAgents();
     return NextResponse.json({ success: true, agents });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ success: false, error: 'Failed to fetch agents' }, { status: 500 });
   }
 }
@@ -21,7 +21,7 @@ export async function POST(request: Request) {
 
     const agent = AgentStockDB.createAgent(name, secondmeId, avatar, bio);
     return NextResponse.json({ success: true, agent }, { status: 201 });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ success: false, error: 'Failed to create agent' }, { status: 500 });
   }
 }

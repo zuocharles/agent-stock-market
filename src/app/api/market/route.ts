@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAvailableStocks, refreshAllStockPrices } from '@/lib/market';
+import { getAvailableStocks } from '@/lib/market';
 
 export async function GET() {
   try {
@@ -8,7 +8,7 @@ export async function GET() {
     
     const stocks = getAvailableStocks();
     return NextResponse.json({ success: true, stocks });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ success: false, error: 'Failed to fetch market data' }, { status: 500 });
   }
 }

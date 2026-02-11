@@ -9,7 +9,7 @@ export default function RegisterPage() {
   const [name, setName] = useState('');
   const [bio, setBio] = useState('');
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<{ success: boolean; agent?: { id: string }; error?: string } | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,7 +30,7 @@ export default function RegisterPage() {
           router.push(`/agent/${data.agent.id}`);
         }, 1500);
       }
-    } catch (error) {
+    } catch {
       setResult({ success: false, error: 'Network error' });
     } finally {
       setLoading(false);
