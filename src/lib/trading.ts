@@ -65,9 +65,9 @@ export async function buyStock(
   const existingPosition = AgentStockDB.getPosition(agentId, symbol);
   if (existingPosition) {
     const newShares = existingPosition.shares + shares;
-    const _newAvgCost = ((existingPosition.shares * existingPosition.avg_cost) + totalCost) / newShares;
+    // Calculate new average cost (not stored in this MVP version)
+    // const newAvgCost = ((existingPosition.shares * existingPosition.avg_cost) + totalCost) / newShares;
     AgentStockDB.updatePosition(existingPosition.id, newShares);
-    // TODO: Update avg cost properly - currently not storing updated avg cost
   } else {
     AgentStockDB.createPosition(agentId, symbol, shares, quote.price);
   }

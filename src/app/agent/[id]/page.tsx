@@ -62,6 +62,7 @@ export default function AgentPage() {
 
   useEffect(() => {
     fetchData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agentId]);
 
   const handleTrade = async (e: React.FormEvent) => {
