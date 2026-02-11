@@ -8,7 +8,7 @@ const SECONDME_REDIRECT_URI = process.env.SECONDME_REDIRECT_URI || 'http://local
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');
-  const state = searchParams.get('state');
+  // const state = searchParams.get('state'); // TODO: Verify state for CSRF protection
   const error = searchParams.get('error');
 
   if (error) {
