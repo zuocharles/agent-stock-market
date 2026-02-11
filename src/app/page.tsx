@@ -4,7 +4,7 @@ import { getCurrentAgent } from '@/lib/auth';
 
 export default async function Home() {
   const leaderboard = await AgentStockDB.getLeaderboard();
-  const currentAgent = getCurrentAgent();
+  const currentAgent = await getCurrentAgent();
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white">

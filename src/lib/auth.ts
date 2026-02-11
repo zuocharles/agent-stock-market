@@ -1,17 +1,17 @@
 import { cookies } from 'next/headers';
 import { AgentStockDB } from './db';
 
-export function getCurrentAgent() {
+export async function getCurrentAgent() {
   const cookieStore = cookies();
   const agentId = cookieStore.get('agent_id')?.value;
   
   if (!agentId) return null;
   
-  return AgentStockDB.getAgentById(agentId);
+  return await AgentStockDB.getAgentById(agentId);
 }
 
-export function requireAuth() {
-  const agent = getCurrentAgent();
+export async function requireAuth() {
+  const agent = await getCurrentAgent();
   if (!agent) {
     throw new Error('Unauthorized');
   }
