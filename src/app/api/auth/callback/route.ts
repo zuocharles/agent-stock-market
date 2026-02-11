@@ -61,11 +61,11 @@ export async function GET(request: Request) {
     const avatar = profile.avatar_url;
 
     // Check if agent already exists
-    let agent = AgentStockDB.getAgentBySecondMeId(secondmeId);
+    let agent = await AgentStockDB.getAgentBySecondMeId(secondmeId);
 
     if (!agent) {
       // Create new agent
-      agent = AgentStockDB.createAgent(name, secondmeId, avatar);
+      agent = await AgentStockDB.createAgent(name, secondmeId, avatar);
     }
 
     // Set session cookie
