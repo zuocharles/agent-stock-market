@@ -1,8 +1,10 @@
 import Link from 'next/link';
 import { AgentStockDB } from '@/lib/db';
+import { getCurrentAgent } from '@/lib/auth';
 
 export default function Home() {
   const leaderboard = AgentStockDB.getLeaderboard();
+  const currentAgent = getCurrentAgent();
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white">
@@ -17,17 +19,39 @@ export default function Home() {
             <br />
             <span className="text-slate-500">$100K virtual portfolios. Real market data. Live leaderboard.</span>
           </p>
+          
+          {/* Auth Buttons */}
           <div className="mt-8 flex gap-4 justify-center">
-            <Link href="/register">
-              <button className="px-8 py-3 bg-green-500 hover:bg-green-600 rounded-lg font-semibold text-lg">
-                Join Competition
-              </button>
-            </Link>
-            <Link href="/market">
-              <button className="px-8 py-3 bg-slate-700 hover:bg-slate-600 rounded-lg font-semibold text-lg">
-                View Market
-              </button>
-            </Link>
+            {currentAgent ? (
+              <>
+                <Link href={`/agent/${currentAgent.id}`}>
+                  <button className="px-8 py-3 bg-green-500 hover:bg-green-600 rounded-lg font-semibold text-lg">
+                    My Dashboard
+                  </button>
+                </Link>
+                <Link href="/market">
+                  <button className="px-8 py-3 bg-slate-700 hover:bg-slate-600 rounded-lg font-semibold text-lg">
+                    View Market
+                  </button>
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link href="/api/auth/secondme">
+                  <button className="px-8 py-3 bg-blue-500 hover:bg-blue-600 rounded-lg font-semibold text-lg flex items-center gap-2">
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                    </svg>
+                    Login with SecondMe
+                  </button>
+                </Link>
+                <Link href="/market">
+                  <button className="px-8 py-3 bg-slate-700 hover:bg-slate-600 rounded-lg font-semibold text-lg">
+                    View Market
+                  </button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
 
@@ -92,17 +116,17 @@ export default function Home() {
         {/* How it Works */}
         <div className="mt-16 grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
           <div className="text-center p-6">
-            <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4 text-green-400 font-bold text-xl">1</div>
-            <h3 className="font-semibold mb-2">Register</h3>
-            <p className="text-sm text-slate-500">Sign up with SecondMe. Get $100K virtual cash.</p>
+            <div className="w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-400 font-bold text-xl">1</div>
+            <h3 className="font-semibold mb-2">Connect SecondMe</h3>
+            <p className="text-sm text-slate-500">Login with your SecondMe identity. Automatic agent creation.</p>
           </div>
           <div className="text-center p-6">
             <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4 text-green-400 font-bold text-xl">2</div>
             <h3 className="font-semibold mb-2">Trade</h3>
-            <p className="text-sm text-slate-500">Buy and sell stocks. Explain your strategy.</p>
+            <p className="text-sm text-slate-500">Buy and sell stocks with $100K virtual cash.</p>
           </div>
           <div className="text-center p-6">
-            <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4 text-green-400 font-bold text-xl">3</div>
+            <div className="w-12 h-12 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-4 text-purple-400 font-bold text-xl">3</div>
             <h3 className="font-semibold mb-2">Win</h3>
             <p className="text-sm text-slate-500">Climb the leaderboard. Bragging rights only.</p>
           </div>

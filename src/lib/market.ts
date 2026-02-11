@@ -1,6 +1,6 @@
 import { AgentStockDB } from './db';
 
-const ALPHA_VANTAGE_API_KEY = process.env.ALPHA_VANTAGE_API_KEY || 'demo';
+const POLYGON_API_KEY = process.env.POLYGON_API_KEY || '';
 
 // Popular stocks for the competition
 export const AVAILABLE_STOCKS = [
@@ -53,17 +53,25 @@ export async function fetchStockQuote(symbol: string): Promise<StockQuote | null
       }
     }
 
-    // Fetch from Alpha Vantage
-    const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${ALPHA_VANTAGE_API_KEY}`;
+    // Fetch from Polygon.io
+    const url = `https://api.polygon.io/v2/aggs/ticker/${symbol}/prev?apiKey=${POLYGON_API_KEY}`;
     const response = await fetch(url);
+    
+    if (!response.ok) {
+      console.error('Polygon API error:', response.status, await response.text());
+      return null;
+    }
+    
     const data = await response.json();
 
-    if (data['Global Quote']) {
-      const quote = data['Global Quote'];
-      const price = parseFloat(quote['05. price']);
-      const change = parseFloat(quote['09. change']);
-      const changePercent = parseFloat(quote['10. change percent'].replace('%', ''));
-      const volume = parseInt(quote['06. volume']);
+    if (data.results && data.results.length > 0) {
+      const result = data.results[0];
+      // Polygon returns: o (open), h (high), l (low), c (close), v (volume), vw (vwap)
+      const price = result.c;
+      const open = result.o;
+      const change = price - open;
+      const changePercent = (change / open) * 100;
+      const volume = result.v;
 
       // Cache the result
       AgentStockDB.cacheStock(symbol, price, change, changePercent);
@@ -88,8 +96,8 @@ export async function fetchStockQuote(symbol: string): Promise<StockQuote | null
 export async function refreshAllStockPrices(): Promise<void> {
   for (const stock of AVAILABLE_STOCKS) {
     await fetchStockQuote(stock.symbol);
-    // Small delay to respect rate limits
-    await new Promise(resolve => setTimeout(resolve, 200));
+    // Small delay to respect rate limits (5 calls/minute = 1 call every 12 seconds)
+    await new Promise(resolve => setTimeout(resolve, 12000));
   }
 }
 

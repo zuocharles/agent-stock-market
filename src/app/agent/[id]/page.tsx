@@ -40,6 +40,7 @@ export default function AgentPage() {
   const [portfolio, setPortfolio] = useState<{ cash: number; positionsValue: number; total: number; positions: Position[] } | null>(null);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isOwner, setIsOwner] = useState(false);
   const [tradeSymbol, setTradeSymbol] = useState('');
   const [tradeShares, setTradeShares] = useState('');
   const [tradeType, setTradeType] = useState<'buy' | 'sell'>('buy');
@@ -55,6 +56,7 @@ export default function AgentPage() {
           setAgent(data.agent);
           setPortfolio(data.portfolio);
           setTrades(data.trades);
+          setIsOwner(data.isOwner);
         }
         setLoading(false);
       });
@@ -105,7 +107,14 @@ export default function AgentPage() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white">
       <div className="container mx-auto px-4 py-12 max-w-5xl">
-        <Link href="/" className="text-slate-400 hover:text-white mb-6 inline-block">← Back to Leaderboard</Link>
+        <div className="flex items-center justify-between mb-6">
+          <Link href="/" className="text-slate-400 hover:text-white">← Back to Leaderboard</Link>
+          {isOwner && (
+            <Link href="/api/auth/logout">
+              <button className="text-sm text-slate-400 hover:text-white">Logout</button>
+            </Link>
+          )}
+        </div>
         
         {/* Header */}
         <div className="bg-slate-800/50 rounded-2xl p-8 mb-6">
@@ -128,72 +137,85 @@ export default function AgentPage() {
         </div>
 
         <div className="grid md:grid-cols-2 gap-6">
-          {/* Trading Interface */}
-          <div className="bg-slate-800/30 rounded-2xl p-6">
-            <h2 className="text-xl font-bold mb-4">Trade</h2>
-            
-            {tradeResult && (
-              <div className={`p-3 rounded-lg mb-4 ${tradeResult.success ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                {tradeResult.message || tradeResult.error}
-              </div>
-            )}
+          {/* Trading Interface - Only for owner */}
+          {isOwner ? (
+            <div className="bg-slate-800/30 rounded-2xl p-6">
+              <h2 className="text-xl font-bold mb-4">Trade</h2>
+              
+              {tradeResult && (
+                <div className={`p-3 rounded-lg mb-4 ${tradeResult.success ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                  {tradeResult.message || tradeResult.error}
+                </div>
+              )}
 
-            <form onSubmit={handleTrade} className="space-y-4">
-              <div className="flex gap-2">
+              <form onSubmit={handleTrade} className="space-y-4">
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setTradeType('buy')}
+                    className={`flex-1 py-2 rounded-lg ${tradeType === 'buy' ? 'bg-green-500 text-white' : 'bg-slate-700 text-slate-400'}`}
+                  >
+                    Buy
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTradeType('sell')}
+                    className={`flex-1 py-2 rounded-lg ${tradeType === 'sell' ? 'bg-red-500 text-white' : 'bg-slate-700 text-slate-400'}`}
+                  >
+                    Sell
+                  </button>
+                </div>
+
+                <input
+                  type="text"
+                  value={tradeSymbol}
+                  onChange={(e) => setTradeSymbol(e.target.value)}
+                  placeholder="Symbol (e.g., AAPL)"
+                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg"
+                  required
+                />
+
+                <input
+                  type="number"
+                  value={tradeShares}
+                  onChange={(e) => setTradeShares(e.target.value)}
+                  placeholder="Shares"
+                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg"
+                  required
+                  min="1"
+                />
+
+                <textarea
+                  value={tradeRationale}
+                  onChange={(e) => setTradeRationale(e.target.value)}
+                  placeholder="Why this trade? (optional)"
+                  rows={2}
+                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg"
+                />
+
                 <button
-                  type="button"
-                  onClick={() => setTradeType('buy')}
-                  className={`flex-1 py-2 rounded-lg ${tradeType === 'buy' ? 'bg-green-500 text-white' : 'bg-slate-700 text-slate-400'}`}
+                  type="submit"
+                  disabled={tradeLoading}
+                  className={`w-full py-3 rounded-lg font-semibold ${
+                    tradeType === 'buy' ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'
+                  } disabled:bg-slate-600`}
                 >
-                  Buy
+                  {tradeLoading ? 'Processing...' : `${tradeType === 'buy' ? 'Buy' : 'Sell'} Stock`}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setTradeType('sell')}
-                  className={`flex-1 py-2 rounded-lg ${tradeType === 'sell' ? 'bg-red-500 text-white' : 'bg-slate-700 text-slate-400'}`}
-                >
-                  Sell
+              </form>
+            </div>
+          ) : (
+            <div className="bg-slate-800/30 rounded-2xl p-6 flex flex-col items-center justify-center text-center">
+              <div className="text-4xl mb-4">🔒</div>
+              <h2 className="text-xl font-bold mb-2">Trading Disabled</h2>
+              <p className="text-slate-400 mb-4">You can only trade on your own account.</p>
+              <Link href="/api/auth/secondme">
+                <button className="px-6 py-3 bg-blue-500 hover:bg-blue-600 rounded-lg font-semibold">
+                  Login with SecondMe
                 </button>
-              </div>
-
-              <input
-                type="text"
-                value={tradeSymbol}
-                onChange={(e) => setTradeSymbol(e.target.value)}
-                placeholder="Symbol (e.g., AAPL)"
-                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg"
-                required
-              />
-
-              <input
-                type="number"
-                value={tradeShares}
-                onChange={(e) => setTradeShares(e.target.value)}
-                placeholder="Shares"
-                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg"
-                required
-                min="1"
-              />
-
-              <textarea
-                value={tradeRationale}
-                onChange={(e) => setTradeRationale(e.target.value)}
-                placeholder="Why this trade? (optional)"
-                rows={2}
-                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg"
-              />
-
-              <button
-                type="submit"
-                disabled={tradeLoading}
-                className={`w-full py-3 rounded-lg font-semibold ${
-                  tradeType === 'buy' ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'
-                } disabled:bg-slate-600`}
-              >
-                {tradeLoading ? 'Processing...' : `${tradeType === 'buy' ? 'Buy' : 'Sell'} Stock`}
-              </button>
-            </form>
-          </div>
+              </Link>
+            </div>
+          )}
 
           {/* Positions */}
           <div className="bg-slate-800/30 rounded-2xl p-6">
