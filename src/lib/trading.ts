@@ -28,7 +28,7 @@ export async function buyStock(
   }
 
   // Get agent
-  const agent = AgentStockDB.getAgentById(agentId);
+  const agent = await AgentStockDB.getAgentById(agentId);
   if (!agent) {
     return { success: false, message: 'Agent not found' };
   }
@@ -59,23 +59,22 @@ export async function buyStock(
   }
 
   // Execute trade
-  const trade = AgentStockDB.createTrade(agentId, symbol, 'buy', shares, quote.price, rationale);
+  const trade = await AgentStockDB.createTrade(agentId, symbol, 'buy', shares, quote.price, rationale);
 
   // Update or create position
-  const existingPosition = AgentStockDB.getPosition(agentId, symbol);
+  const existingPosition = await AgentStockDB.getPosition(agentId, symbol);
   if (existingPosition) {
     const newShares = existingPosition.shares + shares;
-    // Calculate new average cost (not stored in this MVP version)
-    // const newAvgCost = ((existingPosition.shares * existingPosition.avg_cost) + totalCost) / newShares;
-    AgentStockDB.updatePosition(existingPosition.id, newShares);
+    const newAvgCost = ((existingPosition.shares * existingPosition.avg_cost) + totalCost) / newShares;
+    await AgentStockDB.updatePositionWithCost(existingPosition.id, newShares, newAvgCost);
   } else {
-    AgentStockDB.createPosition(agentId, symbol, shares, quote.price);
+    await AgentStockDB.createPosition(agentId, symbol, shares, quote.price);
   }
 
   // Update agent cash
   const newCash = agent.cash - totalCost;
-  const portfolio = AgentStockDB.calculatePortfolioValue(agentId);
-  AgentStockDB.updateAgentValue(agentId, newCash, portfolio.total);
+  const portfolio = await AgentStockDB.calculatePortfolioValue(agentId);
+  await AgentStockDB.updateAgentValue(agentId, newCash, portfolio.total);
 
   return {
     success: true,
@@ -103,13 +102,13 @@ export async function sellStock(
   }
 
   // Get agent
-  const agent = AgentStockDB.getAgentById(agentId);
+  const agent = await AgentStockDB.getAgentById(agentId);
   if (!agent) {
     return { success: false, message: 'Agent not found' };
   }
 
   // Check position
-  const position = AgentStockDB.getPosition(agentId, symbol);
+  const position = await AgentStockDB.getPosition(agentId, symbol);
   if (!position || position.shares < shares) {
     return { success: false, message: `Insufficient shares. Own ${position?.shares || 0}, want to sell ${shares}` };
   }
@@ -124,16 +123,16 @@ export async function sellStock(
   const totalProceeds = shares * quote.price;
 
   // Execute trade
-  const trade = AgentStockDB.createTrade(agentId, symbol, 'sell', shares, quote.price, rationale);
+  const trade = await AgentStockDB.createTrade(agentId, symbol, 'sell', shares, quote.price, rationale);
 
   // Update position
   const newShares = position.shares - shares;
-  AgentStockDB.updatePosition(position.id, newShares);
+  await AgentStockDB.updatePosition(position.id, newShares);
 
   // Update agent cash
   const newCash = agent.cash + totalProceeds;
-  const portfolio = AgentStockDB.calculatePortfolioValue(agentId);
-  AgentStockDB.updateAgentValue(agentId, newCash, portfolio.total);
+  const portfolio = await AgentStockDB.calculatePortfolioValue(agentId);
+  await AgentStockDB.updateAgentValue(agentId, newCash, portfolio.total);
 
   return {
     success: true,
@@ -149,7 +148,7 @@ export async function sellStock(
   };
 }
 
-export function getPortfolio(agentId: string): {
+export async function getPortfolio(agentId: string): Promise<{
   cash: number;
   positionsValue: number;
   total: number;
@@ -162,14 +161,14 @@ export function getPortfolio(agentId: string): {
     pnl: number;
     pnlPercent: number;
   }>;
-} {
-  const agent = AgentStockDB.getAgentById(agentId);
+}> {
+  const agent = await AgentStockDB.getAgentById(agentId);
   if (!agent) {
     return { cash: 0, positionsValue: 0, total: 0, positions: [] };
   }
 
-  const positions = AgentStockDB.getPositions(agentId);
-  const stocks = AgentStockDB.getAllStocks();
+  const positions = await AgentStockDB.getPositions(agentId);
+  const stocks = await AgentStockDB.getAllStocks();
 
   let positionsValue = 0;
   const enrichedPositions = positions.map(pos => {

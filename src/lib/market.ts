@@ -38,7 +38,7 @@ export interface StockQuote {
 export async function fetchStockQuote(symbol: string): Promise<StockQuote | null> {
   try {
     // Check cache first (refresh every 15 minutes)
-    const cached = AgentStockDB.getStock(symbol);
+    const cached = await AgentStockDB.getStock(symbol);
     if (cached) {
       const cacheAge = Date.now() - new Date(cached.updated_at).getTime();
       if (cacheAge < 15 * 60 * 1000) { // 15 minutes
@@ -74,7 +74,7 @@ export async function fetchStockQuote(symbol: string): Promise<StockQuote | null
       const volume = result.v;
 
       // Cache the result
-      AgentStockDB.cacheStock(symbol, price, change, changePercent);
+      await AgentStockDB.cacheStock(symbol, price, change, changePercent);
 
       return {
         symbol,
@@ -101,13 +101,15 @@ export async function refreshAllStockPrices(): Promise<void> {
   }
 }
 
-export function getAvailableStocks(): Array<{ symbol: string; name: string; price?: number }> {
-  const stocks = AgentStockDB.getAllStocks();
+export async function getAvailableStocks(): Promise<Array<{ symbol: string; name: string; price?: number; change?: number; change_percent?: number }>> {
+  const stocks = await AgentStockDB.getAllStocks();
   return AVAILABLE_STOCKS.map(stock => {
     const cached = stocks.find(s => s.symbol === stock.symbol);
     return {
       ...stock,
-      price: cached?.price
+      price: cached?.price,
+      change: cached?.change,
+      change_percent: cached?.change_percent
     };
   });
 }

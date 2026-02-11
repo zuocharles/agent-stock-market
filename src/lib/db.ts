@@ -1,58 +1,9 @@
-import Database from 'better-sqlite3';
-import { randomUUID } from 'crypto';
-import path from 'path';
+import { createClient } from '@supabase/supabase-js';
 
-const dbPath = path.join(process.cwd(), 'data', 'agentstock.db');
-const db = new Database(dbPath);
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS agents (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    secondme_id TEXT UNIQUE,
-    avatar TEXT,
-    bio TEXT,
-    cash REAL DEFAULT 100000,
-    total_value REAL DEFAULT 100000,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS positions (
-    id TEXT PRIMARY KEY,
-    agent_id TEXT NOT NULL,
-    symbol TEXT NOT NULL,
-    shares INTEGER NOT NULL,
-    avg_cost REAL NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE,
-    UNIQUE(agent_id, symbol)
-  );
-
-  CREATE TABLE IF NOT EXISTS trades (
-    id TEXT PRIMARY KEY,
-    agent_id TEXT NOT NULL,
-    symbol TEXT NOT NULL,
-    type TEXT NOT NULL,
-    shares INTEGER NOT NULL,
-    price REAL NOT NULL,
-    total REAL NOT NULL,
-    rationale TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
-  );
-
-  CREATE TABLE IF NOT EXISTS stock_cache (
-    symbol TEXT PRIMARY KEY,
-    price REAL NOT NULL,
-    change REAL DEFAULT 0,
-    change_percent REAL DEFAULT 0,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE INDEX IF NOT EXISTS idx_positions_agent ON positions(agent_id);
-  CREATE INDEX IF NOT EXISTS idx_trades_agent ON trades(agent_id);
-  CREATE INDEX IF NOT EXISTS idx_agents_value ON agents(total_value DESC);
-`);
+export const supabase = createClient(supabaseUrl, supabaseKey);
 
 export interface Agent {
   id: string;
@@ -96,127 +47,191 @@ export interface StockCache {
 
 export class AgentStockDB {
   // Agent CRUD
-  static createAgent(name: string, secondmeId?: string, avatar?: string, bio?: string): Agent {
-    const id = randomUUID();
-    const stmt = db.prepare(`
-      INSERT INTO agents (id, name, secondme_id, avatar, bio, cash, total_value)
-      VALUES (?, ?, ?, ?, ?, 100000, 100000)
-    `);
-    stmt.run(id, name, secondmeId || null, avatar || null, bio || null);
-    return { id, name, secondme_id: secondmeId, avatar, bio, cash: 100000, total_value: 100000, created_at: new Date().toISOString() };
+  static async createAgent(name: string, secondmeId?: string, avatar?: string, bio?: string): Promise<Agent> {
+    const { data, error } = await supabase
+      .from('agents')
+      .insert([{ name, secondme_id: secondmeId, avatar, bio, cash: 100000, total_value: 100000 }])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
   }
 
-  static getAgentById(id: string): Agent | null {
-    const stmt = db.prepare('SELECT * FROM agents WHERE id = ?');
-    return stmt.get(id) as Agent | null;
+  static async getAgentById(id: string): Promise<Agent | null> {
+    const { data, error } = await supabase
+      .from('agents')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (error) return null;
+    return data;
   }
 
-  static getAgentBySecondMeId(secondmeId: string): Agent | null {
-    const stmt = db.prepare('SELECT * FROM agents WHERE secondme_id = ?');
-    return stmt.get(secondmeId) as Agent | null;
+  static async getAgentBySecondMeId(secondmeId: string): Promise<Agent | null> {
+    const { data, error } = await supabase
+      .from('agents')
+      .select('*')
+      .eq('secondme_id', secondmeId)
+      .single();
+    
+    if (error) return null;
+    return data;
   }
 
-  static getAllAgents(): Agent[] {
-    const stmt = db.prepare('SELECT * FROM agents ORDER BY total_value DESC');
-    return stmt.all() as Agent[];
+  static async getAllAgents(): Promise<Agent[]> {
+    const { data, error } = await supabase
+      .from('agents')
+      .select('*')
+      .order('total_value', { ascending: false });
+    
+    if (error) return [];
+    return data || [];
   }
 
-  static updateAgentValue(id: string, cash: number, totalValue: number): void {
-    const stmt = db.prepare('UPDATE agents SET cash = ?, total_value = ? WHERE id = ?');
-    stmt.run(cash, totalValue, id);
+  static async updateAgentValue(id: string, cash: number, totalValue: number): Promise<void> {
+    const { error } = await supabase
+      .from('agents')
+      .update({ cash, total_value: totalValue })
+      .eq('id', id);
+    
+    if (error) throw error;
   }
 
   // Positions
-  static getPositions(agentId: string): Position[] {
-    const stmt = db.prepare('SELECT * FROM positions WHERE agent_id = ?');
-    return stmt.all(agentId) as Position[];
+  static async getPositions(agentId: string): Promise<Position[]> {
+    const { data, error } = await supabase
+      .from('positions')
+      .select('*')
+      .eq('agent_id', agentId);
+    
+    if (error) return [];
+    return data || [];
   }
 
-  static getPosition(agentId: string, symbol: string): Position | null {
-    const stmt = db.prepare('SELECT * FROM positions WHERE agent_id = ? AND symbol = ?');
-    return stmt.get(agentId, symbol) as Position | null;
+  static async getPosition(agentId: string, symbol: string): Promise<Position | null> {
+    const { data, error } = await supabase
+      .from('positions')
+      .select('*')
+      .eq('agent_id', agentId)
+      .eq('symbol', symbol)
+      .single();
+    
+    if (error) return null;
+    return data;
   }
 
-  static createPosition(agentId: string, symbol: string, shares: number, avgCost: number): Position {
-    const id = randomUUID();
-    const stmt = db.prepare(`
-      INSERT INTO positions (id, agent_id, symbol, shares, avg_cost)
-      VALUES (?, ?, ?, ?, ?)
-    `);
-    stmt.run(id, agentId, symbol, shares, avgCost);
-    return { id, agent_id: agentId, symbol, shares, avg_cost: avgCost, created_at: new Date().toISOString() };
+  static async createPosition(agentId: string, symbol: string, shares: number, avgCost: number): Promise<Position> {
+    const { data, error } = await supabase
+      .from('positions')
+      .insert([{ agent_id: agentId, symbol, shares, avg_cost: avgCost }])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
   }
 
-  static updatePosition(id: string, shares: number): void {
+  static async updatePosition(id: string, shares: number): Promise<void> {
     if (shares <= 0) {
-      const stmt = db.prepare('DELETE FROM positions WHERE id = ?');
-      stmt.run(id);
+      const { error } = await supabase
+        .from('positions')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
     } else {
-      const stmt = db.prepare('UPDATE positions SET shares = ? WHERE id = ?');
-      stmt.run(shares, id);
+      const { error } = await supabase
+        .from('positions')
+        .update({ shares })
+        .eq('id', id);
+      if (error) throw error;
     }
   }
 
+  static async updatePositionWithCost(id: string, shares: number, avgCost: number): Promise<void> {
+    const { error } = await supabase
+      .from('positions')
+      .update({ shares, avg_cost: avgCost })
+      .eq('id', id);
+    if (error) throw error;
+  }
+
   // Trades
-  static createTrade(agentId: string, symbol: string, type: 'buy' | 'sell', shares: number, price: number, rationale?: string): Trade {
-    const id = randomUUID();
+  static async createTrade(agentId: string, symbol: string, type: 'buy' | 'sell', shares: number, price: number, rationale?: string): Promise<Trade> {
     const total = shares * price;
-    const stmt = db.prepare(`
-      INSERT INTO trades (id, agent_id, symbol, type, shares, price, total, rationale)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-    stmt.run(id, agentId, symbol, type, shares, price, total, rationale || null);
-    return { id, agent_id: agentId, symbol, type, shares, price, total, rationale, created_at: new Date().toISOString() };
+    const { data, error } = await supabase
+      .from('trades')
+      .insert([{ agent_id: agentId, symbol, type, shares, price, total, rationale }])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
   }
 
-  static getTrades(agentId: string): Trade[] {
-    const stmt = db.prepare('SELECT * FROM trades WHERE agent_id = ? ORDER BY created_at DESC');
-    return stmt.all(agentId) as Trade[];
+  static async getTrades(agentId: string): Promise<Trade[]> {
+    const { data, error } = await supabase
+      .from('trades')
+      .select('*')
+      .eq('agent_id', agentId)
+      .order('created_at', { ascending: false });
+    
+    if (error) return [];
+    return data || [];
   }
 
-  static getRecentTrades(limit: number = 20): Trade[] {
-    const stmt = db.prepare(`
-      SELECT t.*, a.name as agent_name FROM trades t
-      JOIN agents a ON t.agent_id = a.id
-      ORDER BY t.created_at DESC LIMIT ?
-    `);
-    return stmt.all(limit) as Trade[];
+  static async getRecentTrades(limit: number = 20): Promise<Trade[]> {
+    const { data, error } = await supabase
+      .from('trades')
+      .select('*, agents(name)')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    
+    if (error) return [];
+    return data || [];
   }
 
   // Stock cache
-  static cacheStock(symbol: string, price: number, change: number, changePercent: number): void {
-    const stmt = db.prepare(`
-      INSERT INTO stock_cache (symbol, price, change, change_percent, updated_at)
-      VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
-      ON CONFLICT(symbol) DO UPDATE SET
-        price = excluded.price,
-        change = excluded.change,
-        change_percent = excluded.change_percent,
-        updated_at = excluded.updated_at
-    `);
-    stmt.run(symbol, price, change, changePercent);
+  static async cacheStock(symbol: string, price: number, change: number, changePercent: number): Promise<void> {
+    const { error } = await supabase
+      .from('stock_cache')
+      .upsert([{ symbol, price, change, change_percent: changePercent, updated_at: new Date().toISOString() }]);
+    
+    if (error) throw error;
   }
 
-  static getStock(symbol: string): StockCache | null {
-    const stmt = db.prepare('SELECT * FROM stock_cache WHERE symbol = ?');
-    return stmt.get(symbol) as StockCache | null;
+  static async getStock(symbol: string): Promise<StockCache | null> {
+    const { data, error } = await supabase
+      .from('stock_cache')
+      .select('*')
+      .eq('symbol', symbol)
+      .single();
+    
+    if (error) return null;
+    return data;
   }
 
-  static getAllStocks(): StockCache[] {
-    const stmt = db.prepare('SELECT * FROM stock_cache ORDER BY symbol');
-    return stmt.all() as StockCache[];
+  static async getAllStocks(): Promise<StockCache[]> {
+    const { data, error } = await supabase
+      .from('stock_cache')
+      .select('*')
+      .order('symbol');
+    
+    if (error) return [];
+    return data || [];
   }
 
   // Calculate portfolio value
-  static calculatePortfolioValue(agentId: string): { cash: number; positionsValue: number; total: number } {
-    const agent = this.getAgentById(agentId);
+  static async calculatePortfolioValue(agentId: string): Promise<{ cash: number; positionsValue: number; total: number }> {
+    const agent = await this.getAgentById(agentId);
     if (!agent) return { cash: 0, positionsValue: 0, total: 0 };
 
-    const positions = this.getPositions(agentId);
+    const positions = await this.getPositions(agentId);
     let positionsValue = 0;
 
     for (const pos of positions) {
-      const stock = this.getStock(pos.symbol);
+      const stock = await this.getStock(pos.symbol);
       if (stock) {
         positionsValue += pos.shares * stock.price;
       }
@@ -230,13 +245,14 @@ export class AgentStockDB {
   }
 
   // Leaderboard
-  static getLeaderboard(): Array<Agent & { positionsValue: number }> {
-    const agents = this.getAllAgents();
-    return agents.map(agent => {
-      const calc = this.calculatePortfolioValue(agent.id);
-      return { ...agent, positionsValue: calc.positionsValue };
-    });
+  static async getLeaderboard(): Promise<Array<Agent & { positionsValue: number }>> {
+    const agents = await this.getAllAgents();
+    const results = await Promise.all(
+      agents.map(async (agent) => {
+        const calc = await this.calculatePortfolioValue(agent.id);
+        return { ...agent, positionsValue: calc.positionsValue };
+      })
+    );
+    return results;
   }
 }
-
-export default db;

@@ -8,13 +8,13 @@ export async function GET(request: Request, { params }: { params: { id: string }
     const cookieStore = cookies();
     const sessionAgentId = cookieStore.get('agent_id')?.value;
     
-    const agent = AgentStockDB.getAgentById(params.id);
+    const agent = await AgentStockDB.getAgentById(params.id);
     if (!agent) {
       return NextResponse.json({ success: false, error: 'Agent not found' }, { status: 404 });
     }
 
-    const portfolio = getPortfolio(agent.id);
-    const trades = AgentStockDB.getTrades(agent.id);
+    const portfolio = await getPortfolio(agent.id);
+    const trades = await AgentStockDB.getTrades(agent.id);
 
     return NextResponse.json({
       success: true,

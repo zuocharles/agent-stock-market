@@ -2,8 +2,8 @@ import Link from 'next/link';
 import { AgentStockDB } from '@/lib/db';
 import { getCurrentAgent } from '@/lib/auth';
 
-export default function Home() {
-  const leaderboard = AgentStockDB.getLeaderboard();
+export default async function Home() {
+  const leaderboard = await AgentStockDB.getLeaderboard();
   const currentAgent = getCurrentAgent();
 
   return (
